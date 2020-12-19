@@ -1,7 +1,5 @@
-from enum import IntEnum
-from collections import deque
-from functools import reduce
 import re
+from enum import IntEnum
 from typing import List
 
 
@@ -106,9 +104,10 @@ class JackTokenizer:
         with open(file_path, 'r') as f:
             file_content = f.read()
 
+        # Removes all comments
         str_without_comments = re.sub('\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$', '', file_content, flags=re.MULTILINE)
-        str_without_new_lines = str_without_comments.lstrip('\n').replace('\n', ' ')
-        return JackTokenizer._split_keep_seperators(str_without_new_lines)
+        str_without_new_lines = str_without_comments.lstrip('\n').replace('\n', ' ')  # Remove new lines
+        return JackTokenizer._split_keep_seperators(str_without_new_lines)  # Splits the string by symbols and spaces
 
     @staticmethod
     def _split_keep_seperators(text: str) -> List[str]:
