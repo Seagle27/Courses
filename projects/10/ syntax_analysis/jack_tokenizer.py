@@ -13,30 +13,6 @@ class TokenTypes(IntEnum):
     STRING_CONST = 4
 
 
-class Keyword(IntEnum):
-    CLASS = 0
-    CONSTRUCTOR = 1
-    FUNCTION = 2
-    METHOD = 3
-    FIELD = 4
-    STATIC = 5
-    VAR = 6
-    INT = 7
-    CHAR = 8
-    BOOLEAN = 9
-    VOID = 10
-    TRUE = 11
-    FALSE = 12
-    NULL = 13
-    THIS = 14
-    LET = 15
-    DO = 16
-    IF = 17
-    ELSE = 18
-    WHILE = 19
-    RETURN = 20
-
-
 class JackTokenizer:
     """
     Ignores all comments and white space in the input stream, and serializes it into jack-language tokens.
@@ -84,26 +60,40 @@ class JackTokenizer:
         else:
             return TokenTypes.IDENTIFIER
 
-    def key_word(self) -> Keyword:
+    def key_word(self):
         """
         This method should be called only if token_type is KEYWORD.
         :return: The Keyword which is the current token as a Enum.
         """
-        pass
+        return self.current_token.upper()
 
     def symbol(self) -> str:
         """
         This method should be called only if token_type is SYMBOL.
         :return: The character which is the current token
         """
-        pass
+        return self.current_token
 
     def identifier(self) -> str:
         """
         This method should be called only if token_type is IDENTIFIER.
         :return: The identifier which is the current token
         """
-        pass
+        return self.current_token
+
+    def int_val(self) -> int:
+        """
+        This method should be called only if token_type is INT_CONST.
+        :return: The integer value of the current token
+        """
+        return int(self.current_token)
+
+    def string_val(self) -> str:
+        """
+        This method should be called only if token_type is STRING_CONST.
+        :return: The string value of the current token, without the two enclosing double qoutes.
+        """
+        return self.current_token
 
     @staticmethod
     def _load_file(file_path: str) -> List[str]:
