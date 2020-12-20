@@ -1,9 +1,20 @@
+from jack_tokenizer import *
+from xml.etree.ElementTree import TreeBuilder
 
-class CompilationEngine:
+
+class CompilationEngine(TreeBuilder):
     """Generates the compiler's output"""
 
-    def __init__(self, jack_filename: str, output_path: str):
-        pass
+    TERMINAL_TOKEN_TYPES = ["STRING_CONST", "INT_CONST", "IDENTIFIER", "SYMBOL"]
+    TERMINAL_KEYWORDS = ["boolean", "class", "void", "int"]
+
+    def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
+        super().__init__()
+        self.output_path = output_path
+        self.tokenizer = jack_tokenizer
+        self.start('tokens')
+        self.compile_class()
+        self.end('tokens')
 
     def compile_class(self) -> None:
         """
@@ -110,3 +121,49 @@ class CompilationEngine:
         :return: None.
         """
         pass
+
+    def _consume_token(self, expected_token: str):
+        curr_token = self._get_current_token()
+        if expected_token != curr_token:
+            raise CompilationEngineError(f"Expected {expected_token} but current token is {curr_token}. "
+                                         f"Compilation failed.")
+        else:
+            self.tokenizer.advance()
+
+    def start(self, tag, **kwargs):
+        super().start(tag, {})
+
+    def _write_current_terminal_token(self) -> None:
+        token_type = self.tokenizer.token_type()
+        if token_type is TokenTypes.INT_CONST:
+            tag = "integerConstant"
+        elif token_type is TokenTypes.STRING_CONST:
+            tag = "StringConstant"
+        else:
+            tag = self.tokenizer.token_type().name.lower()
+
+        self.start(tag)
+        self.data(self._get_current_token())
+        self.end(tag)
+
+    def _get_current_token(self) -> str:
+        token_type = self.tokenizer.token_type()
+        if token_type is TokenTypes.INT_CONST:
+            curr_token = self.tokenizer.int_val()
+        elif token_type is TokenTypes.KEYWORD:
+            curr_token = self.tokenizer.key_word()
+        else:
+            curr_token = self.tokenizer.current_token
+
+        return curr_token
+
+
+class CompilationEngineError(Exception):
+    def __init__(self, message=None):
+        self.message = message
+
+    def __str__(self):
+        if self.message:
+            return self.message
+        else:
+            return "Unexpected token. Compilation failed"

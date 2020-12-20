@@ -63,7 +63,7 @@ class JackTokenizer:
         This method should be called only if token_type is KEYWORD.
         :return: The Keyword which is the current token as a Enum.
         """
-        return self.current_token.upper()
+        return self.current_token
 
     def symbol(self) -> str:
         """
