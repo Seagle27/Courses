@@ -58,14 +58,31 @@ class CompilationEngine(TreeBuilder):
         Compiles a complete method, function or constructor.
         :return: None
         """
-        pass
+        self.start('subroutineDec')
+        self._consume_by_token(self.SUBROUTINE_TOKENS)
+        self._consume_by_token(self.VARIABLE_TYPES.append('void'))  # ['int', 'char', 'boolean', 'void']
+        self._consume_by_type(TokenTypes.IDENTIFIER)
+        self._consume_by_token('(')
+        self.compile_parameter_list()
+        self._consume_by_token(')')
+        self.compile_subroutine_body()
+        self.end('subroutineDec')
 
     def compile_parameter_list(self) -> None:
         """
         Compiles a (possibly empty) parameter list. Doesn't handle the enclosing "()".
         :return:
         """
-        pass
+        self.start('parameterList')
+        if self._get_current_token() != ')':
+            self._consume_by_token(self.VARIABLE_TYPES)
+            self._consume_by_type(TokenTypes.IDENTIFIER)
+            while self._get_current_token() != ')':
+                self._consume_by_token(',')
+                self._consume_by_token(self.VARIABLE_TYPES)
+                self._consume_by_type(TokenTypes.IDENTIFIER)
+
+        self.end('parameterList')
 
     def compile_subroutine_body(self) -> None:
         """
