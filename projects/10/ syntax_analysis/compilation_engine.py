@@ -4,31 +4,54 @@ from xml.etree.ElementTree import TreeBuilder
 
 class CompilationEngine(TreeBuilder):
     """Generates the compiler's output"""
-
-    TERMINAL_TOKEN_TYPES = ["STRING_CONST", "INT_CONST", "IDENTIFIER", "SYMBOL"]
-    TERMINAL_KEYWORDS = ["boolean", "class", "void", "int"]
+    CLASS_VAR_DEC_TOKENS = ["static", "field"]
+    SUBROUTINE_TOKENS = ["function", "method", "constructor"]
+    VARIABLE_TYPES = ['int', 'char', 'boolean']
+    STATEMENT_TOKENS = ['do', 'let', 'while', 'return', 'if']
 
     def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
         super().__init__()
         self.output_path = output_path
         self.tokenizer = jack_tokenizer
-        self.start('tokens')
         self.compile_class()
-        self.end('tokens')
 
     def compile_class(self) -> None:
         """
         Compiles a complete class
         :return: None
         """
-        pass
+        self.start('class')
+        self._consume_by_token('class')
+        self._consume_by_type(TokenTypes.IDENTIFIER)
+        self._consume_by_token('{')
+
+        while self._get_current_token() != '}':
+            if self._get_current_token() in CompilationEngine.CLASS_VAR_DEC_TOKENS:
+                self.compile_class_var_dec()
+            elif self._get_current_token() in CompilationEngine.SUBROUTINE_TOKENS:
+                self.compile_subroutine_dec()
+            else:
+                raise CompilationEngineError(f"{self._get_current_token()} is an expected token at this point")
+
+        self._consume_by_token('}')
+        self.end('class')
 
     def compile_class_var_dec(self) -> None:
         """
         Compiles static variable declaration, or a field declaration
         :return: None.
         """
-        pass
+        self.start('classVarDec')
+        self._consume_by_token(self.CLASS_VAR_DEC_TOKENS)
+        self._consume_by_token(self.VARIABLE_TYPES)
+        self._consume_by_type(TokenTypes.IDENTIFIER)
+
+        while self._get_current_token() != ';':
+            self._consume_by_token(',')
+            self._consume_by_type(TokenTypes.IDENTIFIER)
+
+        self._consume_by_token(';')
+        self.end('classVarDec')
 
     def compile_subroutine_dec(self) -> None:
         """
@@ -122,12 +145,27 @@ class CompilationEngine(TreeBuilder):
         """
         pass
 
-    def _consume_token(self, expected_token: str):
+    def _consume_by_token(self, expected_tokens: str or List[str]):
+        if not isinstance(expected_tokens, list):
+            expected_token = [expected_tokens]
+
         curr_token = self._get_current_token()
-        if expected_token != curr_token:
-            raise CompilationEngineError(f"Expected {expected_token} but current token is {curr_token}. "
+        if curr_token not in expected_tokens:
+            raise CompilationEngineError(f"Expected {expected_tokens} but current token is {curr_token}. "
                                          f"Compilation failed.")
         else:
+            self._write_current_terminal_token()
+            self.tokenizer.advance()
+
+    def _consume_by_type(self, expected_types: TokenTypes or List[TokenTypes]):
+        if not isinstance(expected_types, list):
+            expected_types = [expected_types]
+        curr_type = self._get_current_token()
+        if curr_type not in expected_types:
+            raise CompilationEngineError(f"Expected {expected_types} but current token type is {curr_type}. "
+                                         f"Compilation failed.")
+        else:
+            self._write_current_terminal_token()
             self.tokenizer.advance()
 
     def start(self, tag, **kwargs):
@@ -149,7 +187,7 @@ class CompilationEngine(TreeBuilder):
     def _get_current_token(self) -> str:
         token_type = self.tokenizer.token_type()
         if token_type is TokenTypes.INT_CONST:
-            curr_token = self.tokenizer.int_val()
+            curr_token = str(self.tokenizer.int_val())
         elif token_type is TokenTypes.KEYWORD:
             curr_token = self.tokenizer.key_word()
         else:
