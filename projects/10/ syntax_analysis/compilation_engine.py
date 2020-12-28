@@ -89,35 +89,82 @@ class CompilationEngine(TreeBuilder):
         Compiles a subroutine's body.
         :return: None
         """
-        pass
+        self.start('subroutineBody')
+        self._consume_by_token('{')
+        while self._get_current_token() == 'var':
+            self.compile_var_dec()
+        while self._get_current_token() != '}':
+            self.compile_statements()
+
+        self._consume_by_token('}')
+        self.end('subroutineBody')
 
     def compile_var_dec(self) -> None:
         """
         Compiles a var declaration.
         :return: None.
         """
-        pass
+        self.start('varDec')
+        self._consume_by_token('var')
+        self._consume_by_token(self.VARIABLE_TYPES)
+        self._consume_by_type(TokenTypes.IDENTIFIER)
+        while self._get_current_token() != ';':
+            self._consume_by_token(',')
+            self._consume_by_type(TokenTypes.IDENTIFIER)
+
+        self._consume_by_token(';')
+        self.end('varDec')
 
     def compile_statements(self) -> None:
         """
         Compiles a sequence of statements. Doesn't handle the enclosing "{}".
         :return: None.
         """
-        pass
+        self.start('statements')
+
+        while self._get_current_token() != '}':
+            if self._get_current_token() == 'let':
+                self.compile_let()
+            elif self._get_current_token() == 'if':
+                self.compile_if()
+            elif self._get_current_token() == 'while':
+                self.compile_while()
+            elif self._get_current_token() == 'do':
+                self.compile_do()
+            elif self._get_current_token() == 'return':
+                self.compile_return()
+            else:
+                raise CompilationEngineError(f"{self._get_current_token()} is an expected token at this point")
+
+        self.end('statements')
 
     def compile_do(self) -> None:
         """
         Compiles a do statement.
         :return: None.
         """
-        pass
+        self.start('doStatement')
+        self._consume_by_token('do')
+        # TODO: Should compile subroutine_call here...
+        self.end('doStatement')
 
     def compile_let(self) -> None:
         """
         Compiles a let statement.
         :return: None.
         """
-        pass
+        self.start('letStatement')
+        self._consume_by_token('let')
+        self._consume_by_type(TokenTypes.IDENTIFIER)
+        if self._get_current_token() == '[':
+            self._consume_by_token('[')
+            self.compile_expression()
+            self._consume_by_token(']')
+
+        self._consume_by_token('=')
+        self.compile_expression()
+        self._consume_by_token(';')
+        self.end('letStatement')
 
     def compile_while(self) -> None:
         """
