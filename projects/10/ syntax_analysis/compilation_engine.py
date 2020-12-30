@@ -62,7 +62,7 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('subroutineDec')
         self._consume(self.SUBROUTINE_TOKENS)
-        self._consume(self.VARIABLE_TYPES.append('void'))  # ['int', 'char', 'boolean', 'void']
+        self._consume(self.VARIABLE_TYPES + ['void'])  # ['int', 'char', 'boolean', 'void']
         self._consume(TokenTypes.IDENTIFIER)
         self._consume('(')
         self.compile_parameter_list()
