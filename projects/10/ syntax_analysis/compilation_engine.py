@@ -12,8 +12,9 @@ class CompilationEngine(TreeBuilder):
 
     def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
         super().__init__()
-        self.output_path = output_path
+        self.output_path = open(output_path, 'w')
         self.tokenizer = jack_tokenizer
+        self.tokenizer.advance()
         self.compile_class()
 
     def compile_class(self) -> None:
@@ -250,9 +251,10 @@ class CompilationEngine(TreeBuilder):
         """
         raise TypeError("Unsupported type: ", type(expected))
 
-    @_consume.register
-    def _(self, expected_tokens: str or List[str]) -> None:
-        """Consume by token"""
+    @_consume.register(str)
+    @_consume.register(list)
+    def _(self, expected_tokens) -> None:
+        """Consume by value"""
         if not isinstance(expected_tokens, list):
             expected_tokens = [expected_tokens]
 
@@ -265,11 +267,11 @@ class CompilationEngine(TreeBuilder):
             self.tokenizer.advance()
 
     @_consume.register
-    def _(self, expected_types: TokenTypes or List[TokenTypes]):
+    def _(self, expected_types: TokenTypes):
         """Consume by type"""
         if not isinstance(expected_types, list):
             expected_types = [expected_types]
-        curr_type = self._get_current_token()
+        curr_type = self.tokenizer.token_type()
         if curr_type not in expected_types:
             raise CompilationEngineError(f"Expected {expected_types} but current token type is {curr_type}. "
                                          f"Compilation failed.")
