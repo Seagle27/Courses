@@ -1,5 +1,6 @@
 from jack_tokenizer import *
 from xml.etree.ElementTree import TreeBuilder
+from functools import singledispatchmethod
 
 
 class CompilationEngine(TreeBuilder):
@@ -21,9 +22,9 @@ class CompilationEngine(TreeBuilder):
         :return: None
         """
         self.start('class')
-        self._consume_by_token('class')
-        self._consume_by_type(TokenTypes.IDENTIFIER)
-        self._consume_by_token('{')
+        self._consume('class')
+        self._consume(TokenTypes.IDENTIFIER)
+        self._consume('{')
 
         while self._get_current_token() != '}':
             if self._get_current_token() in CompilationEngine.CLASS_VAR_DEC_TOKENS:
@@ -33,7 +34,7 @@ class CompilationEngine(TreeBuilder):
             else:
                 raise CompilationEngineError(f"{self._get_current_token()} is an expected token at this point")
 
-        self._consume_by_token('}')
+        self._consume('}')
         self.end('class')
 
     def compile_class_var_dec(self) -> None:
@@ -42,15 +43,15 @@ class CompilationEngine(TreeBuilder):
         :return: None.
         """
         self.start('classVarDec')
-        self._consume_by_token(self.CLASS_VAR_DEC_TOKENS)
-        self._consume_by_token(self.VARIABLE_TYPES)
-        self._consume_by_type(TokenTypes.IDENTIFIER)
+        self._consume(self.CLASS_VAR_DEC_TOKENS)
+        self._consume(self.VARIABLE_TYPES)
+        self._consume(TokenTypes.IDENTIFIER)
 
         while self._get_current_token() != ';':
-            self._consume_by_token(',')
-            self._consume_by_type(TokenTypes.IDENTIFIER)
+            self._consume(',')
+            self._consume(TokenTypes.IDENTIFIER)
 
-        self._consume_by_token(';')
+        self._consume(';')
         self.end('classVarDec')
 
     def compile_subroutine_dec(self) -> None:
@@ -59,12 +60,12 @@ class CompilationEngine(TreeBuilder):
         :return: None
         """
         self.start('subroutineDec')
-        self._consume_by_token(self.SUBROUTINE_TOKENS)
-        self._consume_by_token(self.VARIABLE_TYPES.append('void'))  # ['int', 'char', 'boolean', 'void']
-        self._consume_by_type(TokenTypes.IDENTIFIER)
-        self._consume_by_token('(')
+        self._consume(self.SUBROUTINE_TOKENS)
+        self._consume(self.VARIABLE_TYPES.append('void'))  # ['int', 'char', 'boolean', 'void']
+        self._consume(TokenTypes.IDENTIFIER)
+        self._consume('(')
         self.compile_parameter_list()
-        self._consume_by_token(')')
+        self._consume(')')
         self.compile_subroutine_body()
         self.end('subroutineDec')
 
@@ -75,12 +76,12 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('parameterList')
         if self._get_current_token() != ')':
-            self._consume_by_token(self.VARIABLE_TYPES)
-            self._consume_by_type(TokenTypes.IDENTIFIER)
+            self._consume(self.VARIABLE_TYPES)
+            self._consume(TokenTypes.IDENTIFIER)
             while self._get_current_token() != ')':
-                self._consume_by_token(',')
-                self._consume_by_token(self.VARIABLE_TYPES)
-                self._consume_by_type(TokenTypes.IDENTIFIER)
+                self._consume(',')
+                self._consume(self.VARIABLE_TYPES)
+                self._consume(TokenTypes.IDENTIFIER)
 
         self.end('parameterList')
 
@@ -90,13 +91,13 @@ class CompilationEngine(TreeBuilder):
         :return: None
         """
         self.start('subroutineBody')
-        self._consume_by_token('{')
+        self._consume('{')
         while self._get_current_token() == 'var':
             self.compile_var_dec()
         while self._get_current_token() != '}':
             self.compile_statements()
 
-        self._consume_by_token('}')
+        self._consume('}')
         self.end('subroutineBody')
 
     def compile_var_dec(self) -> None:
@@ -105,14 +106,14 @@ class CompilationEngine(TreeBuilder):
         :return: None.
         """
         self.start('varDec')
-        self._consume_by_token('var')
-        self._consume_by_token(self.VARIABLE_TYPES)
-        self._consume_by_type(TokenTypes.IDENTIFIER)
+        self._consume('var')
+        self._consume(self.VARIABLE_TYPES)
+        self._consume(TokenTypes.IDENTIFIER)
         while self._get_current_token() != ';':
-            self._consume_by_token(',')
-            self._consume_by_type(TokenTypes.IDENTIFIER)
+            self._consume(',')
+            self._consume(TokenTypes.IDENTIFIER)
 
-        self._consume_by_token(';')
+        self._consume(';')
         self.end('varDec')
 
     def compile_statements(self) -> None:
@@ -144,7 +145,7 @@ class CompilationEngine(TreeBuilder):
         :return: None.
         """
         self.start('doStatement')
-        self._consume_by_token('do')
+        self._consume('do')
         # TODO: Should compile subroutine_call here...
         self.end('doStatement')
 
@@ -154,16 +155,16 @@ class CompilationEngine(TreeBuilder):
         :return: None.
         """
         self.start('letStatement')
-        self._consume_by_token('let')
-        self._consume_by_type(TokenTypes.IDENTIFIER)
+        self._consume('let')
+        self._consume(TokenTypes.IDENTIFIER)
         if self._get_current_token() == '[':
-            self._consume_by_token('[')
+            self._consume('[')
             self.compile_expression()
-            self._consume_by_token(']')
+            self._consume(']')
 
-        self._consume_by_token('=')
+        self._consume('=')
         self.compile_expression()
-        self._consume_by_token(';')
+        self._consume(';')
         self.end('letStatement')
 
     def compile_while(self) -> None:
@@ -171,21 +172,51 @@ class CompilationEngine(TreeBuilder):
         Compiles a while statement.
         :return: None.
         """
-        pass
+        self.start('whileStatement')
+        self._consume('while')
+        self._consume('(')
+        self.compile_expression()
+        self._consume(')')
+
+        self._consume('{')
+        self.compile_statements()
+        self._consume('}')
+        self.end('whileStatement')
 
     def compile_return(self) -> None:
         """
         Compiles a return statement.
         :return: None.
         """
-        pass
+        self.start('returnStatement')
+        self._consume('return')
+        if self._get_current_token() != ';':
+            self.compile_expression()
+        self._consume(';')
+        self.end('returnStatement')
 
     def compile_if(self) -> None:
         """
         Compiles an if statement, possibly with a trailing else clause.
         :return: None.
         """
-        pass
+        self.start('ifStatement')
+        self._consume('if')
+        self._consume('(')
+        self.compile_expression()
+        self._consume(')')
+
+        self._consume('{')
+        self.compile_statements()
+        self._consume('}')
+
+        if self._get_current_token() == 'else':
+            self._consume('else')
+            self._consume('{')
+            self.compile_statements()
+            self._consume('}')
+
+        self.start('ifStatement')
 
     def compile_expression(self) -> None:
         """
@@ -209,9 +240,21 @@ class CompilationEngine(TreeBuilder):
         """
         pass
 
-    def _consume_by_token(self, expected_tokens: str or List[str]):
+    @singledispatchmethod
+    def _consume(self, expected) -> None:
+        """
+        Check if the current token matches what it's expected to be. Either by value or by type.
+        In case of a match, the function will advance to the next token.
+        Otherwise the function will raise CompilationEngineError.
+        :return: None
+        """
+        raise TypeError("Unsupported type: ", type(expected))
+
+    @_consume.register
+    def _(self, expected_tokens: str or List[str]) -> None:
+        """Consume by token"""
         if not isinstance(expected_tokens, list):
-            expected_token = [expected_tokens]
+            expected_tokens = [expected_tokens]
 
         curr_token = self._get_current_token()
         if curr_token not in expected_tokens:
@@ -221,7 +264,9 @@ class CompilationEngine(TreeBuilder):
             self._write_current_terminal_token()
             self.tokenizer.advance()
 
-    def _consume_by_type(self, expected_types: TokenTypes or List[TokenTypes]):
+    @_consume.register
+    def _(self, expected_types: TokenTypes or List[TokenTypes]):
+        """Consume by type"""
         if not isinstance(expected_types, list):
             expected_types = [expected_types]
         curr_type = self._get_current_token()
