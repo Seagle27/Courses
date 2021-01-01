@@ -9,12 +9,14 @@ class CompilationEngine(TreeBuilder):
     SUBROUTINE_TOKENS = ["function", "method", "constructor"]
     VARIABLE_TYPES = ['int', 'char', 'boolean']
     STATEMENT_TOKENS = ['do', 'let', 'while', 'return', 'if']
+    OP = ['+', '-', '*', '/', '&', '|', '<', '>', '=']
 
     def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
         super().__init__()
         self.output_path = open(output_path, 'w')
         self.tokenizer = jack_tokenizer
-        self.tokenizer.advance()
+        if self.tokenizer.has_more_tokens():
+            self.tokenizer.advance()
         self.compile_class()
 
     def compile_class(self) -> None:
@@ -45,7 +47,8 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('classVarDec')
         self._consume(self.CLASS_VAR_DEC_TOKENS)
-        self._consume(self.VARIABLE_TYPES)
+        self._consume_type()
+
         self._consume(TokenTypes.IDENTIFIER)
 
         while self._get_current_token() != ';':
@@ -62,7 +65,10 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('subroutineDec')
         self._consume(self.SUBROUTINE_TOKENS)
-        self._consume(self.VARIABLE_TYPES + ['void'])  # ['int', 'char', 'boolean', 'void']
+        try:
+            self._consume_type()
+        except CompilationEngineError:
+            self._consume('void')
         self._consume(TokenTypes.IDENTIFIER)
         self._consume('(')
         self.compile_parameter_list()
@@ -77,11 +83,13 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('parameterList')
         if self._get_current_token() != ')':
-            self._consume(self.VARIABLE_TYPES)
+            self._consume_type()
+
             self._consume(TokenTypes.IDENTIFIER)
             while self._get_current_token() != ')':
                 self._consume(',')
-                self._consume(self.VARIABLE_TYPES)
+                self._consume_type()
+
                 self._consume(TokenTypes.IDENTIFIER)
 
         self.end('parameterList')
@@ -108,7 +116,7 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('varDec')
         self._consume('var')
-        self._consume(self.VARIABLE_TYPES)
+        self._consume_type()
         self._consume(TokenTypes.IDENTIFIER)
         while self._get_current_token() != ';':
             self._consume(',')
@@ -125,16 +133,8 @@ class CompilationEngine(TreeBuilder):
         self.start('statements')
 
         while self._get_current_token() != '}':
-            if self._get_current_token() == 'let':
-                self.compile_let()
-            elif self._get_current_token() == 'if':
-                self.compile_if()
-            elif self._get_current_token() == 'while':
-                self.compile_while()
-            elif self._get_current_token() == 'do':
-                self.compile_do()
-            elif self._get_current_token() == 'return':
-                self.compile_return()
+            if self._get_current_token() in self.STATEMENT_TOKENS:
+                getattr(self, 'compile_' + self._get_current_token())()
             else:
                 raise CompilationEngineError(f"{self._get_current_token()} is an expected token at this point")
 
@@ -147,7 +147,8 @@ class CompilationEngine(TreeBuilder):
         """
         self.start('doStatement')
         self._consume('do')
-        # TODO: Should compile subroutine_call here...
+        self.compile_subroutine_call()
+        self._consume(';')
         self.end('doStatement')
 
     def compile_let(self) -> None:
@@ -224,7 +225,12 @@ class CompilationEngine(TreeBuilder):
         Compiles an expression.
         :return: None
         """
-        pass
+        self.start('expression')
+        self.compile_term()
+        while self._get_current_token() in self.OP:
+            self._consume(self.OP)
+            self.compile_term()
+        self.end('expression')
 
     def compile_term(self) -> None:
         """
@@ -232,14 +238,62 @@ class CompilationEngine(TreeBuilder):
         an array entry, or a subroutine call.
         :return: None.
         """
-        pass
+        self.start('term')
+        token_type = self.tokenizer.token_type()
+        if token_type == TokenTypes.IDENTIFIER:
+            curr_token = self._get_current_token()
+            self.tokenizer.advance()
+            if self._get_current_token() in ('(', '.'):
+                self.compile_subroutine_call(curr_token)
+            else:
+                self.start(token_type.name.lower())
+                self.data(curr_token)
+                self.end(token_type.name.lower())
+                if self._get_current_token() == '[':
+                    self._consume('[')
+                    self.compile_expression()
+                    self._consume(']')
+        elif token_type in [token_type.INT_CONST, token_type.STRING_CONST, token_type.KEYWORD]:
+            self._consume(token_type)
+        else:
+            if self._get_current_token() == '(':
+                self._consume('(')
+                self.compile_expression()
+                self._consume(')')
+            else:
+                self._consume(['-', '~'])  # unaryOp term
+
+        self.end('term')
+
+    def compile_subroutine_call(self, subroutine_name=None) -> None:
+        if subroutine_name:
+            self.start('identifier')
+            self.data(subroutine_name)
+            self.end('identifier')
+        else:
+            self._consume(TokenTypes.IDENTIFIER)
+
+        if self._get_current_token() == '.':
+            self._consume('.')
+            self._consume(TokenTypes.IDENTIFIER)
+
+        self._consume('(')
+        self.compile_expression_list()
+        self._consume(')')
 
     def compile_expression_list(self) -> None:
         """
         Compiles a (possibly empty) comma-separated list of expressions.
         :return: None.
         """
-        pass
+        self.start('expressionList')
+        if self._get_current_token() != ')':
+            self.compile_expression()
+        while self._get_current_token() == ',':
+            self._consume(',')
+            self.compile_expression()
+
+        self.end('expressionList')
 
     @singledispatchmethod
     def _consume(self, expected) -> None:
@@ -264,7 +318,8 @@ class CompilationEngine(TreeBuilder):
                                          f"Compilation failed.")
         else:
             self._write_current_terminal_token()
-            self.tokenizer.advance()
+            if self.tokenizer.has_more_tokens():
+                self.tokenizer.advance()
 
     @_consume.register
     def _(self, expected_types: TokenTypes):
@@ -277,7 +332,18 @@ class CompilationEngine(TreeBuilder):
                                          f"Compilation failed.")
         else:
             self._write_current_terminal_token()
-            self.tokenizer.advance()
+            if self.tokenizer.has_more_tokens():
+                self.tokenizer.advance()
+
+    def _consume_type(self):
+        """
+        Int / char / boolean / class name
+        :return: None.
+        """
+        try:
+            self._consume(self.VARIABLE_TYPES)
+        except CompilationEngineError:
+            self._consume(TokenTypes.IDENTIFIER)  # Class name
 
     def start(self, tag, **kwargs):
         super().start(tag, {})
