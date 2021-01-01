@@ -1,5 +1,5 @@
 from jack_tokenizer import *
-from xml.etree.ElementTree import TreeBuilder
+from xml.etree.ElementTree import TreeBuilder, ElementTree
 from functools import singledispatchmethod
 
 
@@ -13,11 +13,13 @@ class CompilationEngine(TreeBuilder):
 
     def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
         super().__init__()
-        self.output_path = open(output_path, 'w')
         self.tokenizer = jack_tokenizer
         if self.tokenizer.has_more_tokens():
             self.tokenizer.advance()
         self.compile_class()
+        top_elem = self.close()
+        tree = ElementTree(element=top_elem)
+        tree.write(open(output_path, 'w'), encoding='unicode')
 
     def compile_class(self) -> None:
         """
