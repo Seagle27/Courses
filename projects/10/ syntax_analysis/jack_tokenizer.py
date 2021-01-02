@@ -53,7 +53,7 @@ class JackTokenizer:
             return TokenTypes.SYMBOL
         elif self.current_token.isdigit() and int(self.current_token) <= 32767:
             return TokenTypes.INT_CONST
-        elif self.current_token.startswith('"') and self.current_token.endswith('"'):
+        elif self.current_token.startswith('"'):
             return TokenTypes.STRING_CONST
         else:
             return TokenTypes.IDENTIFIER
@@ -106,7 +106,7 @@ class JackTokenizer:
 
         # Removes all comments
         str_without_comments = re.sub('\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$', '', file_content, flags=re.MULTILINE)
-        str_without_new_lines = str_without_comments.lstrip('\n').replace('\n', ' ')  # Remove new lines
+        str_without_new_lines = str_without_comments.lstrip('\n').replace('\n', ' ').replace('\t', ' ')  # Remove new lines and tabs
         return JackTokenizer._split_keep_seperators(str_without_new_lines)  # Splits the string by symbols and spaces
 
     @staticmethod

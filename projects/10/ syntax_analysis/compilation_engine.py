@@ -259,8 +259,23 @@ class CompilationEngine(TreeBuilder):
                     self._consume('[')
                     self.compile_expression()
                     self._consume(']')
-        elif token_type in [token_type.INT_CONST, token_type.STRING_CONST, token_type.KEYWORD]:
+        elif token_type in [token_type.INT_CONST, token_type.KEYWORD]:
             self._consume(token_type)
+        elif token_type == token_type.STRING_CONST:
+            const_str = ''
+            first = True
+            while const_str.count('"') < 2:
+                if first:
+                    const_str += self._get_current_token()
+                    first = False
+                else:
+                    const_str += ' ' + self._get_current_token()
+                if self.tokenizer.has_more_tokens():
+                    self.tokenizer.advance()
+            self.start('stringConstant')
+            self.data(const_str.replace('"', ''))
+            self.end('stringConstant')
+
         else:
             if self._get_current_token() == '(':
                 self._consume('(')
@@ -365,7 +380,7 @@ class CompilationEngine(TreeBuilder):
         if token_type is TokenTypes.INT_CONST:
             tag = "integerConstant"
         elif token_type is TokenTypes.STRING_CONST:
-            tag = "StringConstant"
+            tag = "stringConstant"
         else:
             tag = self.tokenizer.token_type().name.lower()
 
