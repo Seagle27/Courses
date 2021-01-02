@@ -15,7 +15,7 @@ class JackTokenizer:
     """
     Ignores all comments and white space in the input stream, and serializes it into jack-language tokens.
     """
-    JACK_SYMBOLS = {'{', '}', '(', ')', '[', ']', '.', ';', '+', '-', '*', '/', '&', '|', '<', '>', '=', '~'}
+    JACK_SYMBOLS = {'{', '}', '(', ')', '[', ']', '.', ';', '+', '-', '*', '/', '&', '|', '<', '>', '=', '~', ','}
     JACK_KEYWORDS = {'CLASS', 'CONSTRUCTOR', 'FUNCTION', 'METHOD',
                      'FIELD', 'STATIC', 'VAR', 'INT', 'CHAR', 'BOOLEAN',
                      'VOID', 'TRUE', 'FALSE', 'NULL', 'THIS', 'LET', 'DO',
