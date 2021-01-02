@@ -11,5 +11,6 @@ Only source files are included.
 ### [04: Machine Language](projects/04)
 ### [05: Computer Architecture](projects/05)
 ### [06: Assembler](projects/06)
-### [07: Virtual Machine I:](projects/07)
-### [08: Virtual Machine II:](projects/08)
+### [07: Virtual Machine I](projects/07)
+### [08: Virtual Machine II](projects/08)
+### [10: Compiler I - Syntax Analysis](projects/10)
