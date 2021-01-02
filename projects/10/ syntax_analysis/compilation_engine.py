@@ -1,6 +1,7 @@
 from jack_tokenizer import *
-from xml.etree.ElementTree import TreeBuilder, ElementTree
+from xml.etree.ElementTree import TreeBuilder, ElementTree, tostring
 from functools import singledispatchmethod
+from xml.dom import minidom
 
 
 class CompilationEngine(TreeBuilder):
@@ -18,8 +19,9 @@ class CompilationEngine(TreeBuilder):
             self.tokenizer.advance()
         self.compile_class()
         top_elem = self.close()
+        indent(top_elem)
         tree = ElementTree(element=top_elem)
-        tree.write(open(output_path, 'w'), encoding='unicode')
+        tree.write(open(output_path, 'w'), encoding='unicode', short_empty_elements=False)
 
     def compile_class(self) -> None:
         """
@@ -93,6 +95,8 @@ class CompilationEngine(TreeBuilder):
                 self._consume_type()
 
                 self._consume(TokenTypes.IDENTIFIER)
+        else:
+            self.data('')
 
         self.end('parameterList')
 
@@ -220,7 +224,7 @@ class CompilationEngine(TreeBuilder):
             self.compile_statements()
             self._consume('}')
 
-        self.start('ifStatement')
+        self.end('ifStatement')
 
     def compile_expression(self) -> None:
         """
@@ -291,9 +295,11 @@ class CompilationEngine(TreeBuilder):
         self.start('expressionList')
         if self._get_current_token() != ')':
             self.compile_expression()
-        while self._get_current_token() == ',':
-            self._consume(',')
-            self.compile_expression()
+            while self._get_current_token() == ',':
+                self._consume(',')
+                self.compile_expression()
+        else:
+            self.data('')
 
         self.end('expressionList')
 
@@ -350,6 +356,10 @@ class CompilationEngine(TreeBuilder):
     def start(self, tag, **kwargs):
         super().start(tag, {})
 
+    def data(self, data) -> None:
+        data = ' ' + data + ' ' if data else '\n'
+        super().data(data)
+
     def _write_current_terminal_token(self) -> None:
         token_type = self.tokenizer.token_type()
         if token_type is TokenTypes.INT_CONST:
@@ -373,6 +383,22 @@ class CompilationEngine(TreeBuilder):
             curr_token = self.tokenizer.current_token
 
         return curr_token
+
+
+def indent(elem, level=0):
+    i = "\n" + level * "  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
 
 
 class CompilationEngineError(Exception):

@@ -19,10 +19,9 @@ if __name__ == '__main__':
         else:
             raise FileNotFoundError("[Errno 2] No such file or directory: ", program_path)
 
-        output_file_name = PurePath(program_path).name.split('.')[0] + '.xml'
-        output_file = Path(output_path, output_file_name)
-
         for file in files:
+            output_file_name = PurePath(file).name.split('.')[0] + '.xml'
+            output_file = Path(output_path, output_file_name)
             file_tokenizer = JackTokenizer(file)
             CompilationEngine(file_tokenizer, output_file)
 
