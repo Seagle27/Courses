@@ -13,4 +13,4 @@ Only source files are included.
 ### [06: Assembler](projects/06)
 ### [07: Virtual Machine I](projects/07/VM_translator)
 ### [08: Virtual Machine II](projects/08/VM_translator)
-### [10: Compiler I - Syntax Analysis](projects/10/syntax_analysis)
+### [10: Compiler I - Syntax Analysis](projects/10)
