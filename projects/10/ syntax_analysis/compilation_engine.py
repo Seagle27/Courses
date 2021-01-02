@@ -283,6 +283,7 @@ class CompilationEngine(TreeBuilder):
                 self._consume(')')
             else:
                 self._consume(['-', '~'])  # unaryOp term
+                self.compile_term()
 
         self.end('term')
 
