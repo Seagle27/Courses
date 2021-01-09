@@ -11,15 +11,21 @@ class CompilationEngine:
     SUBROUTINE_TOKENS = ["function", "method", "constructor"]
     VARIABLE_TYPES = ['int', 'char', 'boolean']
     STATEMENT_TOKENS = ['do', 'let', 'while', 'return', 'if']
-    OP = ['+', '-', '*', '/', '&', '|', '<', '>', '=']
+    OP = {'+': 'ADD', '-': 'SUB', '&': 'AND', '|': 'OR', '<': 'LT', '>': 'GT', '=': 'EQ'}
 
     def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
         super().__init__()
         self.tokenizer = jack_tokenizer
+        self.table = SymbolTable()
         self.writer = VMWriter(output_path)
         if self.tokenizer.has_more_tokens():
             self.tokenizer.advance()
+
         self.class_name = ''
+        self.curr_func_name = ''
+        self._if_count = 0
+        self._while_count = 0
+
         self.compile_class()
 
     def compile_class(self) -> None:
@@ -51,13 +57,17 @@ class CompilationEngine:
         Compiles static variable declaration, or a field declaration
         :return: None.
         """
+        kind = str_to_kind(self._get_current_token())
         self._consume(self.CLASS_VAR_DEC_TOKENS)
+        var_type = self._get_current_token()
         self._consume_type()
 
+        self.table.define(self._get_current_token(), var_type, kind)
         self._consume(TokenTypes.IDENTIFIER)
 
         while self._get_current_token() != ';':
             self._consume(',')
+            self.table.define(self._get_current_token(), var_type, kind)
             self._consume(TokenTypes.IDENTIFIER)
 
         self._consume(';')
@@ -67,16 +77,23 @@ class CompilationEngine:
         Compiles a complete method, function or constructor.
         :return: None
         """
+        self.table.reset()
+        subroutine_type = self._get_current_token()
+        if subroutine_type == 'method':
+            self.table.define('this', self.class_name, Kind.ARG)  # Put this as the first arg in case it's a
+            # class method
         self._consume(self.SUBROUTINE_TOKENS)
         try:
             self._consume_type()
         except CompilationEngineError:
             self._consume('void')
+
+        self.curr_func_name = f'{self.class_name}.{self._get_current_token()}'
         self._consume(TokenTypes.IDENTIFIER)
         self._consume('(')
         self.compile_parameter_list()
         self._consume(')')
-        self.compile_subroutine_body()
+        self.compile_subroutine_body(subroutine_type)
 
     def compile_parameter_list(self) -> None:
         """
@@ -84,16 +101,20 @@ class CompilationEngine:
         :return:
         """
         if self._get_current_token() != ')':
+            var_type = self._get_current_token()
             self._consume_type()
 
+            self.table.define(self._get_current_token(), var_type, Kind.ARG)
             self._consume(TokenTypes.IDENTIFIER)
             while self._get_current_token() != ')':
                 self._consume(',')
+                var_type = self._get_current_token()
                 self._consume_type()
 
+                self.table.define(self._get_current_token(), var_type, Kind.ARG)
                 self._consume(TokenTypes.IDENTIFIER)
 
-    def compile_subroutine_body(self) -> None:
+    def compile_subroutine_body(self, subroutine_type: str) -> None:
         """
         Compiles a subroutine's body.
         :return: None
@@ -101,6 +122,18 @@ class CompilationEngine:
         self._consume('{')
         while self._get_current_token() == 'var':
             self.compile_var_dec()
+        var_count = self.table.var_count(Kind.VAR)
+        self.writer.write_function(self.curr_func_name, var_count)
+
+        if subroutine_type == 'constructor':
+            n_fields = self.table.var_count(Kind.FIELD)
+            self.writer.write_push('CONST', n_fields)
+            self.writer.write_call('Memory.alloc', 1)
+            self.writer.write_pop('POINTER', 0)
+        elif subroutine_type == 'method':
+            self.writer.write_push('ARG', 0)
+            self.writer.write_pop('POINTER', 0)
+
         while self._get_current_token() != '}':
             self.compile_statements()
 
@@ -112,10 +145,14 @@ class CompilationEngine:
         :return: None.
         """
         self._consume('var')
+        var_type = self._get_current_token()
         self._consume_type()
+        self.table.define(self._get_current_token(), var_type, Kind.VAR)
         self._consume(TokenTypes.IDENTIFIER)
+
         while self._get_current_token() != ';':
             self._consume(',')
+            self.table.define(self._get_current_token(), var_type, Kind.VAR)
             self._consume(TokenTypes.IDENTIFIER)
 
         self._consume(';')
@@ -138,6 +175,7 @@ class CompilationEngine:
         """
         self._consume('do')
         self.compile_subroutine_call()
+        self.writer.write_pop('TEMP', 0)  # void method
         self._consume(';')
 
     def compile_let(self) -> None:
@@ -146,14 +184,31 @@ class CompilationEngine:
         :return: None.
         """
         self._consume('let')
+        name = self._get_current_token()
+        kind = convert_kind(self.table.kind_of(name))
+        index = self.table.index_of(name)
+
         self._consume(TokenTypes.IDENTIFIER)
         if self._get_current_token() == '[':
             self._consume('[')
             self.compile_expression()
             self._consume(']')
 
-        self._consume('=')
-        self.compile_expression()
+            self.writer.write_push(kind, index)
+            self.writer.write_arithmetic('ADD')
+            self.writer.write_pop('TEMP', 0)
+
+            self._consume('=')
+            self.compile_expression()
+            self.writer.write_push('TEMP', 0)
+            self.writer.write_pop('POINTER', 1)
+            self.writer.write_pop('THAT', 0)
+
+        else:
+            self._consume('=')
+            self.compile_expression()
+            self.writer.write_pop(kind, index)
+
         self._consume(';')
 
     def compile_while(self) -> None:
@@ -163,11 +218,22 @@ class CompilationEngine:
         """
         self._consume('while')
         self._consume('(')
+
+        while_l1 = f"WHILE_START_{self._while_count}"
+        while_l2 = f"WHILE_END_{self._while_count}"
+        self._while_count += 1
+        self.writer.write_label(while_l1)
+
         self.compile_expression()
+        self.writer.write_arithmetic('NOT')
         self._consume(')')
 
         self._consume('{')
+        self.writer.write_if(while_l2)
         self.compile_statements()
+        self.writer.write_if(while_l1)
+        self.writer.write_label(while_l2)
+
         self._consume('}')
 
     def compile_return(self) -> None:
@@ -178,6 +244,8 @@ class CompilationEngine:
         self._consume('return')
         if self._get_current_token() != ';':
             self.compile_expression()
+        else:
+            self.writer.write_push('CONST', 0)
         self._consume(';')
 
     def compile_if(self) -> None:
@@ -190,15 +258,28 @@ class CompilationEngine:
         self.compile_expression()
         self._consume(')')
 
+        if_l1 = f'IF_END_{self._if_count}'
+        if_l2 = f'IF_TRUE_{self._if_count}'
+        if_l3 = f'IF_FALSE_{self._if_count}'
+        self._if_count += 1
+
+        self.writer.write_if(if_l2)
+        self.writer.write_goto(if_l3)
+        self.writer.write_label(if_l2)
+
         self._consume('{')
         self.compile_statements()
+        self.writer.write_goto(if_l1)
         self._consume('}')
+        self.writer.write_goto(if_l3)
 
         if self._get_current_token() == 'else':
             self._consume('else')
             self._consume('{')
             self.compile_statements()
             self._consume('}')
+
+        self.writer.write_label(if_l1)
 
     def compile_expression(self) -> None:
         """
@@ -207,7 +288,14 @@ class CompilationEngine:
         """
         self.compile_term()
         while self._get_current_token() in self.OP:
+            op = self._get_current_token()
             self._consume(self.OP)
+            if op == '*':
+                self.writer.write_call('Math.multiply', 2)
+            elif op == '/':
+                self.writer.write_call('Math.divide', 2)
+            else:
+                self.writer.write_arithmetic(self.OP[op])
             self.compile_term()
 
     def compile_term(self) -> None:
@@ -217,6 +305,7 @@ class CompilationEngine:
         :return: None.
         """
         token_type = self.tokenizer.token_type()
+
         if token_type == TokenTypes.IDENTIFIER:
             curr_token = self._get_current_token()
             self.tokenizer.advance()
@@ -227,8 +316,34 @@ class CompilationEngine:
                     self._consume('[')
                     self.compile_expression()
                     self._consume(']')
-        elif token_type in [token_type.INT_CONST, token_type.KEYWORD]:
+
+                    kind = convert_kind(self.table.kind_of(curr_token))
+                    index = self.table.index_of(curr_token)
+
+                    self.writer.write_push(kind, index)
+                    self.writer.write_arithmetic('ADD')
+                    self.writer.write_pop('POINTER', 1)
+                    self.writer.write_push('THAT', 0)
+
+                else:
+                    kind = convert_kind(self.table.kind_of(curr_token))
+                    index = self.table.index_of(curr_token)
+                    self.writer.write_push(kind, index)
+
+        elif token_type == token_type.INT_CONST:
+            self.writer.write_push('CONST', int(self._get_current_token()))
             self._consume(token_type)
+
+        elif token_type == token_type.KEYWORD:
+            curr_token = self._get_current_token()
+            if curr_token in ['true', 'false', 'null']:
+                self.writer.write_push('CONST', 0)
+                if curr_token == 'true':
+                    self.writer.write_arithmetic('NOT')
+            if curr_token == 'this':
+                self.writer.write_push('POINTER', 0)
+            self._consume(token_type)
+
         elif token_type == token_type.STRING_CONST:
             const_str = ''
             first = True
@@ -240,6 +355,14 @@ class CompilationEngine:
                     const_str += ' ' + self._get_current_token()
                 if self.tokenizer.has_more_tokens():
                     self.tokenizer.advance()
+                const_str = const_str.replace('"', '')
+
+            self.writer.write_push('CONST', len(const_str.replace('"', '')))
+            self.writer.write_call('String.new', 1)
+
+            for char in const_str:
+                self.writer.write_push('CONST', ord(char))
+                self.writer.write_call('String.appendChar', 2)
 
         else:
             if self._get_current_token() == '(':
@@ -247,31 +370,59 @@ class CompilationEngine:
                 self.compile_expression()
                 self._consume(')')
             else:
+                op = self._get_current_token()
                 self._consume(['-', '~'])  # unaryOp term
                 self.compile_term()
+                if op == '-':
+                    self.writer.write_arithmetic('NEG')
+                else:
+                    self.writer.write_arithmetic('NOT')
 
     def compile_subroutine_call(self, subroutine_name=None) -> None:
+        n_args = 0
         if not subroutine_name:
+            subroutine_name = self._get_current_token()
             self._consume(TokenTypes.IDENTIFIER)
 
         if self._get_current_token() == '.':
             self._consume('.')
+            sub_name = self._get_current_token()
             self._consume(TokenTypes.IDENTIFIER)
+            try:  # Instance
+                var_type = self.table.type_of(subroutine_name)
+                kind = convert_kind(self.table.kind_of(subroutine_name))
+                index = self.table.index_of(subroutine_name)
+                self.writer.write_push(kind, index)
+                func_name = f'{var_type}.{sub_name}'
+            except KeyError:  # Class
+                func_name = f'{subroutine_name}.{sub_name}'
+
+        else:
+            func_name = f'{self.class_name}.{subroutine_name}'
+            n_args += 1
+            self.writer.write_pop('POINTER', 0)
 
         self._consume('(')
-        self.compile_expression_list()
+        n_args += self.compile_expression_list()
         self._consume(')')
 
-    def compile_expression_list(self) -> None:
+        self.writer.write_call(func_name, n_args)
+
+    def compile_expression_list(self) -> int:
         """
         Compiles a (possibly empty) comma-separated list of expressions.
-        :return: None.
+        :return: Int. Number of arguments.
         """
+        n_args = 0
+
         if self._get_current_token() != ')':
             self.compile_expression()
+            n_args += 1
             while self._get_current_token() == ',':
                 self._consume(',')
                 self.compile_expression()
+                n_args += 1
+        return n_args
 
     @singledispatchmethod
     def _consume(self, expected) -> None:
@@ -331,6 +482,20 @@ class CompilationEngine:
             curr_token = self.tokenizer.current_token
 
         return curr_token
+
+
+def str_to_kind(str_type: str) -> Kind:
+    return Kind[str_type.upper()]
+
+
+def convert_kind(kind: str) -> str:
+    kind_mapping = {
+        'VAR': 'LOCAL',
+        'FIELD': 'THIS'
+    }
+    if kind in kind_mapping:
+        return kind_mapping[kind]
+    return kind
 
 
 class CompilationEngineError(Exception):

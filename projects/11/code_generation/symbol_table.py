@@ -43,7 +43,7 @@ class SymbolTable(dict):
         """
         return self._count[kind.name]
 
-    def kind_of(self, name: str) -> Kind:
+    def kind_of(self, name: str) -> str:
         """
         Returns the kind of the named identifier in the current scope. If the identifier is unknown in the current
         scope, raise an KeyError exception.
@@ -66,7 +66,6 @@ class SymbolTable(dict):
         """
         Clears the subroutine table.
         """
-
         self.subroutine_table.clear()
         self._count['ARG'] = 0
         self._count['VAR'] = 0
@@ -82,4 +81,3 @@ class SymbolTable(dict):
             return self.class_table[key]
         else:
             raise KeyError(f"{key} not in any scope.")
-
