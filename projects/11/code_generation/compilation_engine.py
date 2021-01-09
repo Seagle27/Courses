@@ -1,7 +1,6 @@
 from jack_tokenizer import *
-from xml.etree.ElementTree import TreeBuilder, ElementTree, tostring
+from xml.etree.ElementTree import TreeBuilder, ElementTree
 from functools import singledispatchmethod
-from xml.dom import minidom
 
 
 class CompilationEngine(TreeBuilder):
