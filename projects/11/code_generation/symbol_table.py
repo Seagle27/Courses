@@ -71,8 +71,7 @@ class SymbolTable(dict):
         self._count['VAR'] = 0
 
     def get(self, key):
-        ret = self[key]
-        return ret
+        return self[key]
 
     def __getitem__(self, key):
         if key in self.subroutine_table:

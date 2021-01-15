@@ -11,7 +11,8 @@ class CompilationEngine:
     SUBROUTINE_TOKENS = ["function", "method", "constructor"]
     VARIABLE_TYPES = ['int', 'char', 'boolean']
     STATEMENT_TOKENS = ['do', 'let', 'while', 'return', 'if']
-    OP = {'+': 'ADD', '-': 'SUB', '&': 'AND', '|': 'OR', '<': 'LT', '>': 'GT', '=': 'EQ'}
+    OP = {'+': 'ADD', '-': 'SUB', '&': 'AND', '|': 'OR', '<': 'LT', '>': 'GT', '=': 'EQ', '*': 'Math.multiply',
+          '/': 'Math.divide'}
 
     def __init__(self, jack_tokenizer: JackTokenizer, output_path: str):
         super().__init__()
@@ -289,14 +290,14 @@ class CompilationEngine:
         self.compile_term()
         while self._get_current_token() in self.OP:
             op = self._get_current_token()
-            self._consume(self.OP)
+            self._consume(op)
+            self.compile_term()
             if op == '*':
                 self.writer.write_call('Math.multiply', 2)
             elif op == '/':
                 self.writer.write_call('Math.divide', 2)
             else:
                 self.writer.write_arithmetic(self.OP[op])
-            self.compile_term()
 
     def compile_term(self) -> None:
         """
@@ -311,24 +312,23 @@ class CompilationEngine:
             self.tokenizer.advance()
             if self._get_current_token() in ('(', '.'):
                 self.compile_subroutine_call(curr_token)
+            elif self._get_current_token() == '[':
+                self._consume('[')
+                self.compile_expression()
+                self._consume(']')
+
+                kind = convert_kind(self.table.kind_of(curr_token))
+                index = self.table.index_of(curr_token)
+
+                self.writer.write_push(kind, index)
+                self.writer.write_arithmetic('ADD')
+                self.writer.write_pop('POINTER', 1)
+                self.writer.write_push('THAT', 0)
+
             else:
-                if self._get_current_token() == '[':
-                    self._consume('[')
-                    self.compile_expression()
-                    self._consume(']')
-
-                    kind = convert_kind(self.table.kind_of(curr_token))
-                    index = self.table.index_of(curr_token)
-
-                    self.writer.write_push(kind, index)
-                    self.writer.write_arithmetic('ADD')
-                    self.writer.write_pop('POINTER', 1)
-                    self.writer.write_push('THAT', 0)
-
-                else:
-                    kind = convert_kind(self.table.kind_of(curr_token))
-                    index = self.table.index_of(curr_token)
-                    self.writer.write_push(kind, index)
+                kind = convert_kind(self.table.kind_of(curr_token))
+                index = self.table.index_of(curr_token)
+                self.writer.write_push(kind, index)
 
         elif token_type == token_type.INT_CONST:
             self.writer.write_push('CONST', int(self._get_current_token()))
