@@ -220,20 +220,20 @@ class CompilationEngine:
         self._consume('while')
         self._consume('(')
 
-        while_l1 = f"WHILE_START_{self._while_count}"
-        while_l2 = f"WHILE_END_{self._while_count}"
+        while_lbl = f"WHILE_{self._while_count}"
+        while_false_lbl = f"WHILE_FALSE{self._while_count}"
         self._while_count += 1
-        self.writer.write_label(while_l1)
+        self.writer.write_label(while_lbl)
 
         self.compile_expression()
-        self.writer.write_arithmetic('NOT')
         self._consume(')')
 
         self._consume('{')
-        self.writer.write_if(while_l2)
+        self.writer.write_if(while_false_lbl)
+
         self.compile_statements()
-        self.writer.write_if(while_l1)
-        self.writer.write_label(while_l2)
+        self.writer.write_goto(while_lbl)
+        self.writer.write_label(while_false_lbl)
 
         self._consume('}')
 
@@ -259,20 +259,18 @@ class CompilationEngine:
         self.compile_expression()
         self._consume(')')
 
-        if_l1 = f'IF_END_{self._if_count}'
-        if_l2 = f'IF_TRUE_{self._if_count}'
-        if_l3 = f'IF_FALSE_{self._if_count}'
+        end_lbl = f'IF_END_{self._if_count}'
+        false_lbl = f'IF_FALSE_{self._if_count}'
         self._if_count += 1
 
-        self.writer.write_if(if_l2)
-        self.writer.write_goto(if_l3)
-        self.writer.write_label(if_l2)
-
         self._consume('{')
+        self.writer.write_if(false_lbl)
+
         self.compile_statements()
-        self.writer.write_goto(if_l1)
+        self.writer.write_goto(end_lbl)
+        self.writer.write_label(false_lbl)
+
         self._consume('}')
-        self.writer.write_goto(if_l3)
 
         if self._get_current_token() == 'else':
             self._consume('else')
@@ -280,7 +278,7 @@ class CompilationEngine:
             self.compile_statements()
             self._consume('}')
 
-        self.writer.write_label(if_l1)
+        self.writer.write_label(end_lbl)
 
     def compile_expression(self) -> None:
         """
@@ -490,7 +488,7 @@ def str_to_kind(str_type: str) -> Kind:
 
 def convert_kind(kind: str) -> str:
     kind_mapping = {
-        'VAR': 'LOCAL',
+        'VAR': 'LCL',
         'FIELD': 'THIS'
     }
     if kind in kind_mapping:
