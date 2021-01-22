@@ -131,6 +131,7 @@ class CompilationEngine:
             self.writer.write_push('CONST', n_fields)
             self.writer.write_call('Memory.alloc', 1)
             self.writer.write_pop('POINTER', 0)
+
         elif subroutine_type == 'method':
             self.writer.write_push('ARG', 0)
             self.writer.write_pop('POINTER', 0)
@@ -247,6 +248,7 @@ class CompilationEngine:
             self.compile_expression()
         else:
             self.writer.write_push('CONST', 0)
+        self.writer.write_return()
         self._consume(';')
 
     def compile_if(self) -> None:
@@ -353,9 +355,9 @@ class CompilationEngine:
                     const_str += ' ' + self._get_current_token()
                 if self.tokenizer.has_more_tokens():
                     self.tokenizer.advance()
-                const_str = const_str.replace('"', '')
+            const_str = const_str.replace('"', '')
 
-            self.writer.write_push('CONST', len(const_str.replace('"', '')))
+            self.writer.write_push('CONST', len(const_str))
             self.writer.write_call('String.new', 1)
 
             for char in const_str:
