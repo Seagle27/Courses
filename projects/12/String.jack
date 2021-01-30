@@ -11,54 +11,142 @@
  * string-oriented operations.
  */
 class String {
+    field Array str;
+    field int currentLen, maxLen;
 
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
+        if (maxLength = 0) {
+            let maxLength = 1;
+        } 
+
+        let str = Array.new(maxLength);
+        let currentLen = 0;
+        let maxLen = maxLength;
+        return this;
     }
 
     /** Disposes this string. */
     method void dispose() {
+        do Array.dispose(str);
+        return;
     }
 
     /** Returns the current length of this string. */
     method int length() {
+        return currentLen;
     }
 
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
+        return str[j];
     }
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
+        if ((j > -1) & (j < maxLen)) {
+            let str[j] = c;
+        }
+        return;
     }
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
+        if (currentLen < maxLen ) {
+            let str[currentLen] = c;
+            let currentLen = currentLen + 1;
+        }
+        return this;
     }
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
+        if (currentLen = 0) {
+            return;
+        }
+        let str[currentLen] = null;
+        let currentLen = currentLen - 1;
+        return;
     }
 
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
+        var int i, res, digitVal;
+        var boolean isNegative;
+
+        let res = 0;
+        let i = 0;
+        let isNegative = false;
+
+        if (str[0] = 45) {
+            let isNegative = true;
+            let i = 1;
+        }
+
+        while ((i < currentLen) & (String.is_digit(str[i]))) {
+            let digitVal = str[i] - 48;  // 0 in ascii
+            let res = (res * 10) + digitVal;
+            let i = i + 1;
+        }
+
+        if (isNegative) {
+            return -res;
+        }
+        else {
+            return res;
+        }
     }
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
+        
+        let currentLen = 0;    // Clear string
+        if (val < 0) {
+            let val = -val;
+            do appendChar(45);      // leading '-'
+        }
+
+        do setIntRecursion(val);
+        return;
+    }
+        
+
+    method void setIntRecursion(int val) {
+        var int lastDigit, lastDigitAsChar;
+
+        let lastDigit = val - (val/10 * 10);  // Modulu
+        let lastDigitAsChar = 48 + lastDigit;
+
+        if (val < 10) {
+            do appendChar(lastDigitAsChar);
+        }
+        else {
+            do setIntRecursion(val / 10);
+            do appendChar(lastDigitAsChar);
+        }
+    
+        return;
     }
 
     /** Returns the new line character. */
     function char newLine() {
+        return 128;
     }
 
     /** Returns the backspace character. */
     function char backSpace() {
+        return 129;
     }
 
     /** Returns the double quote (") character. */
     function char doubleQuote() {
+        return 34;
+    }
+
+    /** Returns whether the given char is a digit or not */
+    function boolean is_digit(char c) {
+        return ~(c < 48) & ~(c > 57);
     }
 }

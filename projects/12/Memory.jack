@@ -17,7 +17,7 @@ class Memory {
 		let ram = 0;
 		let heap = 2048;
 		let freeList = 2048;
-		let heap[0] = 0;  // Next
+		let heap[0] = -1;  // Next
 		let heap[1] = 14335;  // Length
 		return;
     }
@@ -39,8 +39,8 @@ class Memory {
 		var Array found, bestBlock, prevBlock;
 		
 		let prevBlock = Memory._bestFit(size);
-		if (prevBlock = 0) {
-			return null;  // No available block.
+		if (prevBlock = -1) {
+			do Sys.error(6);  // No available block.
 		}
 		else {
 			if (prevBlock = null) {
@@ -62,12 +62,12 @@ class Memory {
 		
 		let currentBlock = freeList;
 		let bestSize = 14336;
-		let bestMatch = 0;
+		let bestMatch = -1;
 		let prevBlock = null;
 		
-		while( ~(currentBlock=0)) {
+		while( ~(currentBlock[0]=-1)) {
 			let currentSize = currentBlock[1];
-			if((currentSize > size +1) & (currentSize < bestMatch)) {
+			if((currentSize > size + 2) & (currentSize < bestSize)) {
 				let bestSize = currentSize;
 				let bestMatch = prevBlock;
 			}
@@ -105,11 +105,11 @@ class Memory {
 		let currLastElement = Memory.getLastFreeElement();
 		if (currLastElement = null) {
 			let freeList = o;
-			let freeList[0] = 0;
+			let freeList[0] = -1;
 		}
 		else {
 			let currLastElement[0] = o;
-			let o[0] = 0;
+			let o[0] = -1;
 		}
 		return;
     }   
@@ -118,7 +118,7 @@ class Memory {
 		var Array element;
 		
 		let element = freeList;		
-		while(~(element[0] = 0)) {
+		while(~(element[0] = -1)) {
             let element = element[0];
         }
         return element;
