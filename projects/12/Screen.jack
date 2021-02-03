@@ -10,9 +10,13 @@
  * the screen is indexed (0,0).
  */
 class Screen {
+    static int screenBaseAddress;
+    static boolean color;
 
     /** Initializes the Screen. */
     function void init() {
+        let screenBaseAddress = 16384;
+        let color = true;
     }
 
     /** Erases the entire screen. */
@@ -22,14 +26,61 @@ class Screen {
     /** Sets the current color, to be used for all subsequent drawXXX commands.
      *  Black is represented by true, white by false. */
     function void setColor(boolean b) {
+        let color = b;
+        return;
     }
 
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
+        var int pixelAddress, regValue;
+
+        let pixelAddress = (32 * y) + (x / 16);
+        let regValue = Memory.peek(screenBaseAddress + pixelAddress);
+        let regValue = editBit(regValue, Math.modulo(x, 16), color);
+        do Memory.poke(pixelAddress, regValue);
+        return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
+        var int a, b, dx, dy, diff;
+        var int temp;
+        var int addToY;
+
+        let a = 0;
+        let b = 0;
+        let diff = 0
+
+        if (x1 > x2) {
+            let temp = x1;
+            let x1 = x2;
+            let x2 = temp;
+
+            let temp = y1;
+            let y1 = y2;
+            let y2 = temp
+        }
+
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+
+        if (dy < 0) {
+            let addToY = -1;
+        }
+        else {
+            let addToY = 1;
+        }
+
+        while(~(a > dx) & (~(b = dy)) {
+            Screen.drawPixel(x1 + a, y1 + b);
+            if (diff < 0) {
+                let a = a + 1;
+            }
+            else {
+                let b = b + addToY;
+            }
+        }
+
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
@@ -39,5 +90,18 @@ class Screen {
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
     function void drawCircle(int x, int y, int r) {
+    }
+
+    /**Edits the nth bit in registerVal to val. Returns the new register value*/
+    function int editBit(int registerVal, int n, boolean val) {
+        var int mask;
+        if(val) {
+            let mask = Math.twoToThePow(n);
+            return (registerVal | mask);
+        }
+        else {
+            let mask = Math.twoToThePow(15) - Math.twoToThePow(n);
+            return (registerVal & mask);
+        }
     }
 }
