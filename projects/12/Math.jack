@@ -37,6 +37,18 @@ class Math {
 		return ~((x & powersOfTwo[n]) = 0);
 	}
 
+	function int twoToThePow(int pow) {
+        return powersOfTwo[pow];
+    }
+
+	/** Returns the remainder part of x/y */
+    function int modulo(int x, int y) {
+        var int a;
+        
+        let a = Math.divide(x, y);
+        return x - (a*y);
+    }
+
     /** Returns the absolute value of x. */
     function int abs(int x) {
 		if (x < 0) {
