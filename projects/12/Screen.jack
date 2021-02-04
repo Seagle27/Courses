@@ -21,6 +21,13 @@ class Screen {
 
     /** Erases the entire screen. */
     function void clearScreen() {
+        var boolean tempColor;
+
+        let tempColor = color;
+        let color = false;
+        do Screen.drawRectangle(0, 0, 511, 255);
+        let color = tempColor;
+        return;
     }
 
     /** Sets the current color, to be used for all subsequent drawXXX commands.
@@ -45,51 +52,82 @@ class Screen {
     function void drawLine(int x1, int y1, int x2, int y2) {
         var int a, b, dx, dy, diff;
         var int temp;
-        var int addToY;
+        var int addToX, addToY;
 
         let a = 0;
         let b = 0;
         let diff = 0
 
-        if (x1 > x2) {
-            let temp = x1;
-            let x1 = x2;
-            let x2 = temp;
-
-            let temp = y1;
-            let y1 = y2;
-            let y2 = temp
-        }
-
         let dx = x2 - x1;
         let dy = y2 - y1;
+        
+        let addToX = 1;
+        let addToY = 1;
 
+        if (dx < 0) {
+            let addToX = -1;
+        }
         if (dy < 0) {
             let addToY = -1;
         }
-        else {
-            let addToY = 1;
-        }
 
-        while(~(a > dx) & (~(b = dy)) {
+        while(~(a = dx) & (~(b = dy)) {
             Screen.drawPixel(x1 + a, y1 + b);
-            if (diff < 0) {
-                let a = a + 1;
+
+            if ((dx = 0) | (dy = 0)){
+                if (dx=0) {
+                    let a = a + addToX;  // Draw horizontal line
+                }
+                else {
+                    let b = b + addToY;  // Draw vertical line
+                }
             }
-            else {
-                let b = b + addToY;
+            else {  // Draw diagonal line
+                if (diff < 0) {
+                let a = a + addToX;
+                }
+                else {
+                    let b = b + addToY;
+                }
             }
         }
-
+        return;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      * and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
+        var int currY;
+        
+        let currY = y1;
+
+        while(~(currY > y2)) {
+            do Screen.drawLine(x1, currY, x2, currY);
+            let currY = currY + 1;
+        }
+        return;
     }
 
     /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
     function void drawCircle(int x, int y, int r) {
+        var int dy, dx, currY;
+        var int rSquared;
+
+        if ((r > 181) | (~(r > 0))) {
+            do Sys.error(23);
+        }
+
+        let rSquared = r * r;
+        let dy = -r;
+
+        while (~(dy > r)){
+            let currY = y + dy;
+            let dx = Math.sqrt(rSquared - (dy * dy));
+            do Screen.drawLine(x - dx, currY, x + dx, currY);
+            let dy = dy + 1;
+        }
+        return;
+
     }
 
     /**Edits the nth bit in registerVal to val. Returns the new register value*/
