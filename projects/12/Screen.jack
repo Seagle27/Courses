@@ -44,13 +44,13 @@ class Screen {
 
         let pixelAddress = (32 * y) + (x / 16);
         let regValue = Memory.peek(screenBaseAddress + pixelAddress);
-        let regValue = Screen.editBit(regValue, Math.modulo(x, 16), color);
+        let regValue = Screen.editBit(regValue, x & 15, color);
         do Memory.poke(screenBaseAddress + pixelAddress, regValue);
         return;
     }
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
-    function void drawLine(int x1, int y1, int x2, int y2) {
+    function void drawLine(int x1, int y1, int x2, int y2) {  // 280,90 - 345,35
         var int a, b, dx, dy, diff;
         var int temp;
         var int addToX, addToY;
@@ -59,7 +59,7 @@ class Screen {
         let b = 0;
         let diff = 0;
 
-        let dx = x2 - x1;
+        let dx = x2 - x1; 
         let dy = y2 - y1;
         
         let addToX = 1;
@@ -72,23 +72,25 @@ class Screen {
             let addToY = -1;
         }
 
-        while(~(a = dx) & (~(b = dy))) {
+        while(~(a = dx) | (~(b = dy))) {
             do Screen.drawPixel(x1 + a, y1 + b);
 
             if ((dx = 0) | (dy = 0)){
                 if (dx=0) {
-                    let a = a + addToX;  // Draw horizontal line
+                    let b = b + addToY;  // Draw horizontal line
                 }
                 else {
-                    let b = b + addToY;  // Draw vertical line
+                    let a = a + addToX; // Draw vertical line
                 }
             }
             else {  // Draw diagonal line
                 if (diff < 0) {
-                let a = a + addToX;
+                    let a = a + addToX;
+                    let diff = diff + (dy * addToY);
                 }
                 else {
                     let b = b + addToY;
+                    let diff = diff - (dx * addToX);
                 }
             }
         }
