@@ -17,6 +17,7 @@ class Screen {
     function void init() {
         let screenBaseAddress = 16384;
         let color = true;
+        return;
     }
 
     /** Erases the entire screen. */
@@ -43,8 +44,8 @@ class Screen {
 
         let pixelAddress = (32 * y) + (x / 16);
         let regValue = Memory.peek(screenBaseAddress + pixelAddress);
-        let regValue = editBit(regValue, Math.modulo(x, 16), color);
-        do Memory.poke(pixelAddress, regValue);
+        let regValue = Screen.editBit(regValue, Math.modulo(x, 16), color);
+        do Memory.poke(screenBaseAddress + pixelAddress, regValue);
         return;
     }
 
@@ -56,7 +57,7 @@ class Screen {
 
         let a = 0;
         let b = 0;
-        let diff = 0
+        let diff = 0;
 
         let dx = x2 - x1;
         let dy = y2 - y1;
@@ -71,8 +72,8 @@ class Screen {
             let addToY = -1;
         }
 
-        while(~(a = dx) & (~(b = dy)) {
-            Screen.drawPixel(x1 + a, y1 + b);
+        while(~(a = dx) & (~(b = dy))) {
+            do Screen.drawPixel(x1 + a, y1 + b);
 
             if ((dx = 0) | (dy = 0)){
                 if (dx=0) {
