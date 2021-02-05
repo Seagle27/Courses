@@ -14,3 +14,6 @@ Only source files are included.
 ### [07: Virtual Machine I](projects/07/VM_translator)
 ### [08: Virtual Machine II](projects/08/VM_translator)
 ### [10: Compiler I - Syntax Analysis](projects/10)
+### [11: Compiler II: Code Generation](projects/11/code_generation)
+### [12: Operating System](projects/12)
+
