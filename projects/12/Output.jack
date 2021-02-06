@@ -76,7 +76,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,30,51,51,63,51,51,51,51,0,0); // A
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -183,8 +183,17 @@ class Output {
     function void moveCursor(int i, int j) {
         var int x, y;
 
-        let cursorX = i;
-        let cursorY = j;
+        if ( (i < 0) | (i > 22) ){
+            do Sys.error(31);  // Invalid input
+            return;
+        }
+        if ( (j < 0) | (j > 63) ){
+            do Sys.error(31);
+            return;
+        }
+
+        let cursorY = i;
+        let cursorX = j;
         
         let x = cursorX * 8;
         let y = cursorY * 11;
@@ -218,7 +227,7 @@ class Output {
             if (rowBitMap > 0){  // No need to do anything if row is empty, as the entire char block is being erased in moveCursor
                 while (col < 8) {
                     if ((rowBitMap & mask) = mask) {
-                        do Screen.drawPixel(x + row, y + col);
+                        do Screen.drawPixel(x + col, y + row);
                     }
                     let mask = mask + mask;  // To mask the next bit
                     let col = col + 1;
@@ -270,7 +279,7 @@ class Output {
             let y = y + 1;
         }
         let x = 0;
-        do Output.moveCursor(x, y);
+        do Output.moveCursor(y, x);
 
         return;
     }
@@ -292,7 +301,7 @@ class Output {
             let x = x - 1;
         }
 
-        do Output.moveCursor(x, y);
+        do Output.moveCursor(y, x);
         return;
     }
 
@@ -315,7 +324,7 @@ class Output {
             let x = x + 1;
         }
 
-        do Output.moveCursor(x, y);
+        do Output.moveCursor(y, x);
         return;
     }
 }
